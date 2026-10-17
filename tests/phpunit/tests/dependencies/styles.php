@@ -331,6 +331,120 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Callbacks for the style_loader_tag filter edit the markup as a string, so it must not change.
+	 *
+	 * @covers WP_Styles::do_item
+	 */
+	public function test_style_loader_tag_markup_is_unchanged() {
+		global $wp_styles;
+
+		$wp_styles->text_direction = 'rtl';
+
+		$tags   = array();
+		$filter = static function ( $tag ) use ( &$tags ) {
+			$tags[] = $tag;
+			return $tag;
+		};
+
+		add_filter( 'style_loader_tag', $filter );
+
+		wp_enqueue_style( 'unchanged', 'https://example.com/style.css?a=1&b=2', array(), '1.0', 'screen' );
+		wp_style_add_data( 'unchanged', 'alt', true );
+		wp_style_add_data( 'unchanged', 'title', 'Black & "white"' );
+		wp_style_add_data( 'unchanged', 'rtl', true );
+
+		$markup = get_echo( 'wp_print_styles' );
+
+		remove_filter( 'style_loader_tag', $filter );
+
+		$expected = array(
+			"<link rel='alternate stylesheet' id='unchanged-css' title='Black &amp; &quot;white&quot;' href='https://example.com/style.css?a=1&#038;b=2&#038;ver=1.0' media='screen' />\n",
+			"<link rel='alternate stylesheet' id='unchanged-rtl-css' title='Black &amp; &quot;white&quot;' href='https://example.com/style-rtl.css?a=1&#038;b=2&#038;ver=1.0' media='screen' />\n",
+		);
+
+		$this->assertSame( $expected, $tags, 'The style_loader_tag filter should be passed the historical markup.' );
+		$this->assertSame( implode( '', $expected ), $markup, 'The historical markup should be printed.' );
+	}
+
+	/**
+	 * @covers WP_Styles::do_item
+	 */
+	public function test_style_attributes_are_printed_after_core_attributes() {
+		$filter = static function ( $attributes ) {
+			$attributes['crossorigin']   = 'anonymous';
+			$attributes['fetchpriority'] = 'high';
+			return $attributes;
+		};
+
+		add_filter( 'wp_style_attributes', $filter );
+
+		wp_enqueue_style( 'ordered', 'https://example.com/style.css', array(), null );
+		$markup = get_echo( 'wp_print_styles' );
+
+		remove_filter( 'wp_style_attributes', $filter );
+
+		$this->assertSame(
+			"<link rel='stylesheet' id='ordered-css' href='https://example.com/style.css' media='all' crossorigin='anonymous' fetchpriority='high' />\n",
+			$markup
+		);
+	}
+
+	/**
+	 * An `href` changed by the wp_style_attributes filter must be escaped, while one left alone is not escaped again.
+	 *
+	 * @covers WP_Styles::do_item
+	 */
+	public function test_style_attributes_filter_can_change_href() {
+		$filter = static function ( $attributes ) {
+			$attributes['href'] = 'https://cdn.example.com/style.css?a=1&b=2"onload="alert(1)';
+			return $attributes;
+		};
+
+		add_filter( 'wp_style_attributes', $filter );
+
+		wp_enqueue_style( 'cdn', 'https://example.com/style.css', array(), null );
+		$markup = get_echo( 'wp_print_styles' );
+
+		remove_filter( 'wp_style_attributes', $filter );
+
+		$this->assertSame(
+			"<link rel='stylesheet' id='cdn-css' href='https://cdn.example.com/style.css?a=1&#038;b=2onload=alert(1)' media='all' />\n",
+			$markup
+		);
+	}
+
+	/**
+	 * @covers ::_print_styles
+	 */
+	public function test_concatenated_styles_markup_is_unchanged() {
+		global $wp_styles;
+
+		$wp_styles->do_concat    = true;
+		$wp_styles->default_dirs = array( '/wp-admin/' );
+
+		wp_enqueue_style( 'concat-one', '/wp-admin/one.css', array(), null );
+		wp_enqueue_style( 'concat-two', '/wp-admin/two.css', array(), null );
+
+		wp_print_styles();
+		$markup = get_echo( '_print_styles' );
+
+		$this->assertMatchesRegularExpression(
+			"#^<link rel='stylesheet' href='[^']*/wp-admin/load-styles\\.php\\?c=[01]&amp;dir=ltr&amp;load%5Bchunk_0%5D=concat-one,concat-two&amp;ver=[^']*' media='all' />\n$#",
+			$markup
+		);
+	}
+
+	/**
+	 * @covers ::wp_admin_css
+	 */
+	public function test_wp_admin_css_markup_is_unchanged() {
+		$this->assertSame(
+			"<link rel='stylesheet' href='" . esc_url( wp_admin_css_uri( 'stylesheet-link-api-test' ) ) . "' />\n",
+			get_echo( 'wp_admin_css', array( 'stylesheet-link-api-test' ) )
+		);
+	}
+
+	/**
 	 * @ticket 42804
 	 */
 	public function test_wp_enqueue_style_with_html5_support_does_not_contain_type_attribute() {
@@ -357,13 +471,11 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	public function test_awkward_handles_are_supported_consistently( $handle ) {
 		wp_enqueue_style( $handle, 'example.com', array(), null );
 
-		$processor = new WP_HTML_Tag_Processor( get_echo( 'wp_print_styles' ) );
+		// The `id` attribute is the handle exactly, character references included, as for an inline style.
+		$id       = htmlspecialchars( "$handle-css", ENT_QUOTES );
+		$expected = "<link rel='stylesheet' id='$id' href='http://example.com' media='all' />\n";
 
-		$this->assertTrue( $processor->next_tag( 'link' ) );
-		$this->assertSame( 'stylesheet', $processor->get_attribute( 'rel' ) );
-		$this->assertSame( $handle . '-css', $processor->get_attribute( 'id' ) );
-		$this->assertSame( 'http://example.com', $processor->get_attribute( 'href' ) );
-		$this->assertSame( 'all', $processor->get_attribute( 'media' ) );
+		$this->assertEqualHTML( $expected, get_echo( 'wp_print_styles' ) );
 	}
 
 	/**
@@ -664,23 +776,37 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	 * @ticket 35921
 	 * @dataProvider data_styles_with_media
 	 */
-	public function test_wp_enqueue_style_with_media( $media ) {
+	public function test_wp_enqueue_style_with_media( $expected, $media ) {
 		wp_enqueue_style( 'handle', 'http://example.com', array(), 1, $media );
-
-		$processor = new WP_HTML_Tag_Processor( get_echo( 'wp_print_styles' ) );
-
-		$this->assertTrue( $processor->next_tag( 'link' ) );
-		$this->assertSame( $media, $processor->get_attribute( 'media' ) );
+		$this->assertStringContainsString( $expected, get_echo( 'wp_print_styles' ) );
 	}
 
 	public function data_styles_with_media() {
 		return array(
-			array( 'all' ),
-			array( '(orientation: portrait)' ),
-			array( '(max-width: 640px)' ),
-			array( 'print and (min-width: 25cm)' ),
-			array( 'screen and (color), projection and (color)' ),
-			array( 'not screen and (color)' ),
+			array(
+				"media='all'",
+				'all',
+			),
+			array(
+				"media='(orientation: portrait)'",
+				'(orientation: portrait)',
+			),
+			array(
+				"media='(max-width: 640px)'",
+				'(max-width: 640px)',
+			),
+			array(
+				"media='print and (min-width: 25cm)'",
+				'print and (min-width: 25cm)',
+			),
+			array(
+				"media='screen and (color), projection and (color)'",
+				'screen and (color), projection and (color)',
+			),
+			array(
+				"media='not screen and (color)'",
+				'not screen and (color)',
+			),
 		);
 	}
 

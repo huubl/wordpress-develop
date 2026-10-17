@@ -97,9 +97,46 @@ HTML;
 
 		remove_filter( 'wp_style_attributes', $filter );
 
-		$this->assertEqualHTML(
+		$this->assertSame(
 			"<link rel=\"stylesheet\" nonce=\"filtered-nonce\" />\n",
 			$tag
+		);
+	}
+
+	/**
+	 * @covers ::wp_get_stylesheet_link_tag
+	 */
+	public function test_get_stylesheet_link_tag_prints_attributes_in_the_order_given() {
+		$this->assertSame(
+			"<link rel=\"preload\" as=\"style\" id=\"test-css\" href=\"https://example.com/style.css?one=1&#038;two=2\" media=\"print\" crossorigin />\n",
+			wp_get_stylesheet_link_tag(
+				array(
+					'rel'         => 'preload',
+					'as'          => 'style',
+					'id'          => 'test-css',
+					'href'        => 'https://example.com/style.css?one=1&two=2',
+					'media'       => 'print',
+					'crossorigin' => true,
+				)
+			)
+		);
+	}
+
+	/**
+	 * @covers ::wp_get_stylesheet_link_tag
+	 *
+	 * @expectedIncorrectUsage WP_HTML_Tag_Processor::set_attribute
+	 */
+	public function test_get_stylesheet_link_tag_rejects_invalid_attribute_names() {
+		$this->assertSame(
+			"<link rel=\"stylesheet\" />\n",
+			wp_get_stylesheet_link_tag(
+				array(
+					'rel'                => 'stylesheet',
+					'onload="alert(1)"'  => true,
+					'x><script>alert(1)' => 'y',
+				)
+			)
 		);
 	}
 
@@ -116,7 +153,7 @@ HTML;
 		$processor = new WP_HTML_Tag_Processor( $tag );
 
 		$this->assertTrue( $processor->next_tag( 'link' ) );
-		$this->assertNull( $processor->get_attribute( 'href' ) );
+		$this->assertNull( $processor->get_attribute( 'href' ), 'A rejected URL should not leave an empty href attribute.' );
 	}
 
 	/**

@@ -212,8 +212,7 @@ class WP_Styles extends WP_Dependencies {
 		$attributes['href']  = $raw_href;
 		$attributes['media'] = $media;
 
-		// Preserve the single-quoted format expected by style_loader_tag callbacks.
-		$tag = str_replace( '"', "'", wp_get_stylesheet_link_tag( $attributes ) );
+		$tag = _wp_get_legacy_stylesheet_link_tag( $attributes, $href );
 
 		/**
 		 * Filters the HTML link tag of an enqueued style.
@@ -243,7 +242,7 @@ class WP_Styles extends WP_Dependencies {
 			$rtl_attributes['href']  = $rtl_src;
 			$rtl_attributes['media'] = $media;
 
-			$rtl_tag = str_replace( '"', "'", wp_get_stylesheet_link_tag( $rtl_attributes ) );
+			$rtl_tag = _wp_get_legacy_stylesheet_link_tag( $rtl_attributes, $rtl_href );
 
 			/** This filter is documented in wp-includes/class-wp-styles.php */
 			$rtl_tag = apply_filters( 'style_loader_tag', $rtl_tag, $handle, $rtl_href, $media );
