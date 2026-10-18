@@ -390,6 +390,32 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Scripts such as the user profile screen's color scheme picker locate a stylesheet by its ID.
+	 *
+	 * @covers WP_Styles::do_item
+	 */
+	public function test_style_attributes_filter_cannot_change_enqueued_style_id() {
+		$this->setExpectedIncorrectUsage( 'wp_get_stylesheet_link_tag' );
+
+		$filter = static function ( $attributes ) {
+			$attributes['id'] = 'changed';
+			return $attributes;
+		};
+
+		add_filter( 'wp_style_attributes', $filter );
+
+		wp_enqueue_style( 'scheme', 'https://example.com/scheme.css', array(), null );
+		$markup = get_echo( 'wp_print_styles' );
+
+		remove_filter( 'wp_style_attributes', $filter );
+
+		$this->assertSame(
+			"<link rel='stylesheet' id='scheme-css' href='https://example.com/scheme.css' media='all' />\n",
+			$markup
+		);
+	}
+
+	/**
 	 * An `href` changed by the wp_style_attributes filter must be escaped, while one left alone is not escaped again.
 	 *
 	 * @covers WP_Styles::do_item

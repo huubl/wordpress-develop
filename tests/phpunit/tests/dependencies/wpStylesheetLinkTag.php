@@ -176,6 +176,108 @@ HTML;
 	}
 
 	/**
+	 * Data provider.
+	 *
+	 * @return array<string, array{ 0: Closure, 1: string }>
+	 */
+	public function data_style_attributes_filter_changing_id(): array {
+		return array(
+			'changed'           => array(
+				static function ( array $attributes ): array {
+					$attributes['id'] = 'changed-css';
+					return $attributes;
+				},
+				"<link rel=\"stylesheet\" id=\"test-css\" href=\"https://example.com/style.css\" />\n",
+			),
+			'removed'           => array(
+				static function ( array $attributes ): array {
+					unset( $attributes['id'] );
+					return $attributes;
+				},
+				"<link rel=\"stylesheet\" href=\"https://example.com/style.css\" id=\"test-css\" />\n",
+			),
+			'lexical_variation' => array(
+				static function ( array $attributes ): array {
+					unset( $attributes['id'] );
+					$attributes['ID'] = 'changed-css';
+					return $attributes;
+				},
+				"<link rel=\"stylesheet\" href=\"https://example.com/style.css\" id=\"test-css\" />\n",
+			),
+		);
+	}
+
+	/**
+	 * The `id` attribute may be used to locate the tag, as the user profile screen does for `colors-css`.
+	 *
+	 * @covers ::wp_get_stylesheet_link_tag
+	 *
+	 * @dataProvider data_style_attributes_filter_changing_id
+	 *
+	 * @param Closure $filter   Filter callback for the attributes.
+	 * @param string  $expected Expected markup.
+	 */
+	public function test_style_attributes_filter_cannot_change_id( Closure $filter, string $expected ) {
+		$this->setExpectedIncorrectUsage( 'wp_get_stylesheet_link_tag' );
+
+		add_filter( 'wp_style_attributes', $filter );
+
+		$this->assertSame(
+			$expected,
+			wp_get_stylesheet_link_tag(
+				array(
+					'rel'  => 'stylesheet',
+					'id'   => 'test-css',
+					'href' => 'https://example.com/style.css',
+				)
+			)
+		);
+	}
+
+	/**
+	 * @covers ::wp_get_stylesheet_link_tag
+	 */
+	public function test_style_attributes_filter_can_add_id() {
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['id'] = 'added-css';
+				return $attributes;
+			}
+		);
+
+		$this->assertSame(
+			"<link rel=\"stylesheet\" id=\"added-css\" />\n",
+			wp_get_stylesheet_link_tag( array( 'rel' => 'stylesheet' ) )
+		);
+	}
+
+	/**
+	 * A lexical variation of the `id` name added alongside the supplied ID is dropped without a notice.
+	 *
+	 * @covers ::wp_get_stylesheet_link_tag
+	 */
+	public function test_style_attributes_filter_cannot_override_id_with_lexical_variation() {
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['ID'] = 'changed-css';
+				return $attributes;
+			}
+		);
+
+		$this->assertSame(
+			"<link rel=\"stylesheet\" id=\"test-css\" />\n",
+			wp_get_stylesheet_link_tag(
+				array(
+					'rel' => 'stylesheet',
+					'id'  => 'test-css',
+				)
+			)
+		);
+	}
+
+	/**
 	 * @covers ::wp_print_stylesheet_link_tag
 	 */
 	public function test_print_stylesheet_link_tag_prints_get_stylesheet_link_tag() {
