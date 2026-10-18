@@ -86,52 +86,32 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	 * @covers WP_Styles::do_item
 	 */
 	public function test_style_attributes_filter_runs_before_legacy_style_loader_tag_filter() {
-		$source             = 'https://example.com/style.css?one=1&two=2';
-		$filtered_attrs     = array();
-		$legacy_filter_args = array();
+		$source = 'https://example.com/style.css?one=1&two=2';
 
-		$attributes_filter = static function ( $attributes ) use ( &$filtered_attrs ) {
-			$filtered_attrs[]    = $attributes;
-			$attributes['nonce'] = 'style-nonce';
-			return $attributes;
-		};
-
-		$legacy_filter = static function ( $tag, $handle, $href, $media ) use ( &$legacy_filter_args ) {
-			$processor = new WP_HTML_Tag_Processor( $tag );
-			$processor->next_tag( 'link' );
-
-			$legacy_filter_args[] = array(
-				'handle' => $handle,
-				'href'   => $href,
-				'media'  => $media,
-				'nonce'  => $processor->get_attribute( 'nonce' ),
-				'tag'    => $tag,
-			);
-
-			return $tag;
-		};
-
-		add_filter( 'wp_style_attributes', $attributes_filter );
-		add_filter( 'style_loader_tag', $legacy_filter, 10, 4 );
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['nonce'] = 'style-nonce';
+				return $attributes;
+			}
+		);
+		$attributes_filter = new MockAction();
+		add_filter( 'wp_style_attributes', array( $attributes_filter, 'filter' ), 20 );
+		$legacy_filter = new MockAction();
+		add_filter( 'style_loader_tag', array( $legacy_filter, 'filter' ), 10, 4 );
 
 		wp_enqueue_style( 'filtered-style', $source, array(), null, 'screen' );
 		$markup = get_echo( 'wp_print_styles' );
 
-		remove_filter( 'wp_style_attributes', $attributes_filter );
-		remove_filter( 'style_loader_tag', $legacy_filter, 10 );
+		$this->assertSame( 1, $attributes_filter->get_call_count() );
+		$this->assertSame( $source, $attributes_filter->get_args()[0][0]['href'], 'The attributes filter should be passed the unescaped URL.' );
 
-		$this->assertCount( 1, $filtered_attrs );
-		$this->assertSame( $source, $filtered_attrs[0]['href'] );
-		$this->assertSame(
-			array(
-				'handle' => 'filtered-style',
-				'href'   => esc_url( $source ),
-				'media'  => 'screen',
-				'nonce'  => 'style-nonce',
-			),
-			array_diff_key( $legacy_filter_args[0], array( 'tag' => true ) )
-		);
-		$this->assertStringNotContainsString( '"', $legacy_filter_args[0]['tag'] );
+		$this->assertSame( 1, $legacy_filter->get_call_count() );
+		list( $tag, $handle, $href, $media ) = $legacy_filter->get_args()[0];
+		$this->assertSame( 'filtered-style', $handle );
+		$this->assertSame( esc_url( $source ), $href, 'The style_loader_tag filter should be passed the escaped URL.' );
+		$this->assertSame( 'screen', $media );
+		$this->assertSame( $markup, $tag );
 
 		$processor = new WP_HTML_Tag_Processor( $markup );
 		$this->assertTrue( $processor->next_tag( 'link' ) );
@@ -144,19 +124,18 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	 */
 	public function test_style_attribute_quotes_do_not_create_extra_attributes() {
 		$attribute_value = "It's O'Reilly's \"quoted\" text; data-injected=\"should-remain-text\"";
-		$filter          = static function ( $attributes ) use ( $attribute_value ) {
-			$attributes['data-quote-test'] = $attribute_value;
-			return $attributes;
-		};
 
-		add_filter( 'wp_style_attributes', $filter );
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ) use ( $attribute_value ): array {
+				$attributes['data-quote-test'] = $attribute_value;
+				return $attributes;
+			}
+		);
 
 		wp_enqueue_style( 'quoted-style', 'https://example.com/style.css', array(), null );
-		$markup = get_echo( 'wp_print_styles' );
 
-		remove_filter( 'wp_style_attributes', $filter );
-
-		$processor = new WP_HTML_Tag_Processor( $markup );
+		$processor = new WP_HTML_Tag_Processor( get_echo( 'wp_print_styles' ) );
 		$this->assertTrue( $processor->next_tag( 'link' ) );
 		$this->assertSame( $attribute_value, $processor->get_attribute( 'data-quote-test' ) );
 		$this->assertNull( $processor->get_attribute( 'data-injected' ) );
@@ -170,57 +149,33 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 		$wp_styles->text_direction = 'rtl';
 
-		$filtered_attrs = array();
-		$legacy_hrefs   = array();
-
-		$attributes_filter = static function ( $attributes ) use ( &$filtered_attrs ) {
-			$filtered_attrs[]          = $attributes;
-			$attributes['data-filter'] = 'applied';
-			return $attributes;
-		};
-
-		$legacy_filter = static function ( $tag, $handle, $href, $media ) use ( &$legacy_hrefs ) {
-			$legacy_hrefs[] = $href;
-			return $tag;
-		};
-
-		add_filter( 'wp_style_attributes', $attributes_filter );
-		add_filter( 'style_loader_tag', $legacy_filter, 10, 4 );
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['data-filter'] = 'applied';
+				return $attributes;
+			}
+		);
+		$legacy_filter = new MockAction();
+		add_filter( 'style_loader_tag', array( $legacy_filter, 'filter' ), 10, 4 );
 
 		wp_enqueue_style( 'theme-style', 'https://example.com/theme.css', array(), null );
 		wp_style_add_data( 'theme-style', 'alt', true );
 		wp_style_add_data( 'theme-style', 'title', 'Alternate theme' );
 		wp_style_add_data( 'theme-style', 'rtl', true );
 
-		$markup = get_echo( 'wp_print_styles' );
+		$expected = <<<'HTML'
+<link rel="alternate stylesheet" id="theme-style-css" title="Alternate theme" href="https://example.com/theme.css" media="all" data-filter="applied" />
+<link rel="alternate stylesheet" id="theme-style-rtl-css" title="Alternate theme" href="https://example.com/theme-rtl.css" media="all" data-filter="applied" />
 
-		remove_filter( 'wp_style_attributes', $attributes_filter );
-		remove_filter( 'style_loader_tag', $legacy_filter, 10 );
+HTML;
 
-		$tags      = array();
-		$processor = new WP_HTML_Tag_Processor( $markup );
-		while ( $processor->next_tag( 'link' ) ) {
-			$tags[] = array(
-				'id'          => $processor->get_attribute( 'id' ),
-				'rel'         => $processor->get_attribute( 'rel' ),
-				'title'       => $processor->get_attribute( 'title' ),
-				'href'        => $processor->get_attribute( 'href' ),
-				'data-filter' => $processor->get_attribute( 'data-filter' ),
-			);
-		}
-
-		$this->assertCount( 2, $filtered_attrs );
-		$this->assertCount( 2, $legacy_hrefs );
-		$this->assertSame( 'alternate stylesheet', $tags[0]['rel'] );
-		$this->assertSame( 'theme-style-css', $tags[0]['id'] );
-		$this->assertSame( 'Alternate theme', $tags[0]['title'] );
-		$this->assertSame( 'https://example.com/theme.css', $tags[0]['href'] );
-		$this->assertSame( 'theme-style-rtl-css', $tags[1]['id'] );
-		$this->assertSame( 'https://example.com/theme-rtl.css', $tags[1]['href'] );
-		$this->assertSame( 'applied', $tags[0]['data-filter'] );
-		$this->assertSame( 'applied', $tags[1]['data-filter'] );
-		$this->assertSame( esc_url( 'https://example.com/theme.css' ), $legacy_hrefs[0] );
-		$this->assertSame( esc_url( 'https://example.com/theme-rtl.css' ), $legacy_hrefs[1] );
+		$this->assertEqualHTML( $expected, get_echo( 'wp_print_styles' ) );
+		$this->assertSame(
+			array( esc_url( 'https://example.com/theme.css' ), esc_url( 'https://example.com/theme-rtl.css' ) ),
+			array_column( $legacy_filter->get_args(), 2 ),
+			'The style_loader_tag filter should be passed each escaped URL.'
+		);
 	}
 
 	/**
@@ -232,22 +187,17 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		$wp_styles->do_concat    = true;
 		$wp_styles->default_dirs = array( '/wp-admin/' );
 
-		$attributes_filter_calls = 0;
-		$legacy_filter_calls     = 0;
-
-		$attributes_filter = static function ( $attributes ) use ( &$attributes_filter_calls ) {
-			++$attributes_filter_calls;
-			$attributes['nonce'] = 'concatenated-style';
-			return $attributes;
-		};
-
-		$legacy_filter = static function ( $tag ) use ( &$legacy_filter_calls ) {
-			++$legacy_filter_calls;
-			return $tag;
-		};
-
-		add_filter( 'wp_style_attributes', $attributes_filter );
-		add_filter( 'style_loader_tag', $legacy_filter );
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['nonce'] = 'concatenated-style';
+				return $attributes;
+			}
+		);
+		$attributes_filter = new MockAction();
+		add_filter( 'wp_style_attributes', array( $attributes_filter, 'filter' ), 20 );
+		$legacy_filter = new MockAction();
+		add_filter( 'style_loader_tag', array( $legacy_filter, 'filter' ) );
 
 		wp_enqueue_style( 'concat-one', '/wp-admin/one.css', array(), null );
 		wp_enqueue_style( 'concat-two', '/wp-admin/two.css', array(), null );
@@ -255,11 +205,8 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		wp_print_styles();
 		$markup = get_echo( '_print_styles' );
 
-		remove_filter( 'wp_style_attributes', $attributes_filter );
-		remove_filter( 'style_loader_tag', $legacy_filter );
-
-		$this->assertSame( 1, $attributes_filter_calls );
-		$this->assertSame( 0, $legacy_filter_calls );
+		$this->assertSame( 1, $attributes_filter->get_call_count() );
+		$this->assertSame( 0, $legacy_filter->get_call_count() );
 
 		$processor = new WP_HTML_Tag_Processor( $markup );
 		$this->assertTrue( $processor->next_tag( 'link' ) );
@@ -271,33 +218,24 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	 * @covers ::wp_admin_css
 	 */
 	public function test_wp_admin_css_uses_style_attributes_and_legacy_filter() {
-		$legacy_files  = array();
-		$legacy_tags   = array();
-		$filter        = static function ( $attributes ) {
-			$attributes['nonce'] = 'admin-style';
-			return $attributes;
-		};
-		$legacy_filter = static function ( $tag, $file ) use ( &$legacy_files, &$legacy_tags ) {
-			$legacy_files[] = $file;
-			$legacy_tags[]  = $tag;
-			$processor      = new WP_HTML_Tag_Processor( $tag );
-			$processor->next_tag( 'link' );
-			if ( 'admin-style' !== $processor->get_attribute( 'nonce' ) ) {
-				return '';
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['nonce'] = 'admin-style';
+				return $attributes;
 			}
-			return $tag;
-		};
-
-		add_filter( 'wp_style_attributes', $filter );
-		add_filter( 'wp_admin_css', $legacy_filter, 10, 2 );
+		);
+		$legacy_filter = new MockAction();
+		add_filter( 'wp_admin_css', array( $legacy_filter, 'filter' ), 10, 2 );
 
 		$markup = get_echo( 'wp_admin_css', array( 'stylesheet-link-api-test' ) );
 
-		remove_filter( 'wp_style_attributes', $filter );
-		remove_filter( 'wp_admin_css', $legacy_filter, 10 );
+		$this->assertSame(
+			array( array( $markup, 'stylesheet-link-api-test' ) ),
+			$legacy_filter->get_args(),
+			'The wp_admin_css filter should be passed the tag with the filtered attributes.'
+		);
 
-		$this->assertSame( array( 'stylesheet-link-api-test' ), $legacy_files );
-		$this->assertStringNotContainsString( '"', $legacy_tags[0] );
 		$processor = new WP_HTML_Tag_Processor( $markup );
 		$this->assertTrue( $processor->next_tag( 'link' ) );
 		$this->assertSame( 'admin-style', $processor->get_attribute( 'nonce' ) );
@@ -308,30 +246,31 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	 * @covers ::locale_stylesheet
 	 */
 	public function test_locale_stylesheet_uses_style_attributes_filter() {
-		$stylesheet_uri_filter = static function ( $stylesheet_uri, $stylesheet_dir_uri ) {
-			return 'https://example.com/locale.css?one=1&two=2';
-		};
-		$attributes_filter     = static function ( $attributes ) {
-			$attributes['nonce'] = 'locale-style';
-			return $attributes;
-		};
+		add_filter(
+			'locale_stylesheet_uri',
+			static function (): string {
+				return 'https://example.com/locale.css?one=1&two=2';
+			}
+		);
+		add_filter(
+			'wp_style_attributes',
+			static function ( array $attributes ): array {
+				$attributes['nonce'] = 'locale-style';
+				return $attributes;
+			}
+		);
 
-		add_filter( 'locale_stylesheet_uri', $stylesheet_uri_filter, 10, 2 );
-		add_filter( 'wp_style_attributes', $attributes_filter );
-
-		$markup = get_echo( 'locale_stylesheet' );
-
-		remove_filter( 'locale_stylesheet_uri', $stylesheet_uri_filter, 10 );
-		remove_filter( 'wp_style_attributes', $attributes_filter );
-
-		$processor = new WP_HTML_Tag_Processor( $markup );
-		$this->assertTrue( $processor->next_tag( 'link' ) );
-		$this->assertSame( 'locale-style', $processor->get_attribute( 'nonce' ) );
-		$this->assertSame( 'https://example.com/locale.css?one=1&two=2', $processor->get_attribute( 'href' ) );
+		$this->assertEqualHTML(
+			"<link rel=\"stylesheet\" href=\"https://example.com/locale.css?one=1&amp;two=2\" media=\"screen\" nonce=\"locale-style\" />\n",
+			get_echo( 'locale_stylesheet' )
+		);
 	}
 
 	/**
 	 * Callbacks for the style_loader_tag filter edit the markup as a string, so it must not change.
+	 *
+	 * This compares exact strings, rather than equivalent HTML, since the quoting style and the order
+	 * of the attributes are what such callbacks rely on.
 	 *
 	 * @covers WP_Styles::do_item
 	 */
@@ -340,13 +279,8 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 		$wp_styles->text_direction = 'rtl';
 
-		$tags   = array();
-		$filter = static function ( $tag ) use ( &$tags ) {
-			$tags[] = $tag;
-			return $tag;
-		};
-
-		add_filter( 'style_loader_tag', $filter );
+		$legacy_filter = new MockAction();
+		add_filter( 'style_loader_tag', array( $legacy_filter, 'filter' ) );
 
 		wp_enqueue_style( 'unchanged', 'https://example.com/style.css?a=1&b=2', array(), '1.0', 'screen' );
 		wp_style_add_data( 'unchanged', 'alt', true );
@@ -355,14 +289,12 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 		$markup = get_echo( 'wp_print_styles' );
 
-		remove_filter( 'style_loader_tag', $filter );
-
 		$expected = array(
 			"<link rel='alternate stylesheet' id='unchanged-css' title='Black &amp; &quot;white&quot;' href='https://example.com/style.css?a=1&#038;b=2&#038;ver=1.0' media='screen' />\n",
 			"<link rel='alternate stylesheet' id='unchanged-rtl-css' title='Black &amp; &quot;white&quot;' href='https://example.com/style-rtl.css?a=1&#038;b=2&#038;ver=1.0' media='screen' />\n",
 		);
 
-		$this->assertSame( $expected, $tags, 'The style_loader_tag filter should be passed the historical markup.' );
+		$this->assertSame( $expected, array_column( $legacy_filter->get_args(), 0 ), 'The style_loader_tag filter should be passed the historical markup.' );
 		$this->assertSame( implode( '', $expected ), $markup, 'The historical markup should be printed.' );
 	}
 
@@ -380,8 +312,6 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 		wp_enqueue_style( 'ordered', 'https://example.com/style.css', array(), null );
 		$markup = get_echo( 'wp_print_styles' );
-
-		remove_filter( 'wp_style_attributes', $filter );
 
 		$this->assertSame(
 			"<link rel='stylesheet' id='ordered-css' href='https://example.com/style.css' media='all' crossorigin='anonymous' fetchpriority='high' />\n",
@@ -407,8 +337,6 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		wp_enqueue_style( 'scheme', 'https://example.com/scheme.css', array(), null );
 		$markup = get_echo( 'wp_print_styles' );
 
-		remove_filter( 'wp_style_attributes', $filter );
-
 		$this->assertSame(
 			"<link rel='stylesheet' id='scheme-css' href='https://example.com/scheme.css' media='all' />\n",
 			$markup
@@ -431,8 +359,6 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		wp_enqueue_style( 'cdn', 'https://example.com/style.css', array(), null );
 		$markup = get_echo( 'wp_print_styles' );
 
-		remove_filter( 'wp_style_attributes', $filter );
-
 		$this->assertSame(
 			"<link rel='stylesheet' id='cdn-css' href='https://cdn.example.com/style.css?a=1&#038;b=2onload=alert(1)' media='all' />\n",
 			$markup
@@ -453,8 +379,6 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 		wp_enqueue_style( 'quoted-url', 'https://example.com/style.css', array(), null );
 		$markup = get_echo( 'wp_print_styles' );
-
-		remove_filter( 'clean_url', $filter );
 
 		$this->assertSame(
 			"<link rel='stylesheet' id='quoted-url-css' href='https://example.com/style.css&quot;onload=&quot;alert(1)' media='all' />\n",
