@@ -5400,7 +5400,7 @@ function wp_admin_css( $file = 'wp-admin', $force_echo = false ) {
 		return;
 	}
 
-	$stylesheet_link = _wp_get_legacy_stylesheet_link_tag(
+	$stylesheet_link = _wp_get_legacy_style_link_tag(
 		array(
 			'rel'  => 'stylesheet',
 			'href' => wp_admin_css_uri( $file ),
@@ -5421,7 +5421,7 @@ function wp_admin_css( $file = 'wp-admin', $force_echo = false ) {
 	echo apply_filters( 'wp_admin_css', $stylesheet_link, $file );
 
 	if ( function_exists( 'is_rtl' ) && is_rtl() ) {
-		$rtl_stylesheet_link = _wp_get_legacy_stylesheet_link_tag(
+		$rtl_stylesheet_link = _wp_get_legacy_style_link_tag(
 			array(
 				'rel'  => 'stylesheet',
 				'href' => wp_admin_css_uri( "$file-rtl" ),

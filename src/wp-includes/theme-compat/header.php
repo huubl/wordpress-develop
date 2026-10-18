@@ -24,7 +24,7 @@ _deprecated_file(
 <title><?php echo wp_get_document_title(); ?></title>
 
 <?php
-wp_print_stylesheet_link_tag(
+wp_print_style_link_tag(
 	array(
 		'rel'   => 'stylesheet',
 		'href'  => get_bloginfo( 'stylesheet_url', 'display' ),

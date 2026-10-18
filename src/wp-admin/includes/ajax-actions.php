@@ -3824,7 +3824,7 @@ function wp_ajax_parse_embed() {
 		$mce_styles = wpview_media_sandbox_styles();
 
 		foreach ( $mce_styles as $style ) {
-			$styles .= wp_get_stylesheet_link_tag(
+			$styles .= wp_get_style_link_tag(
 				array(
 					'rel'  => 'stylesheet',
 					'href' => $style,
@@ -3936,7 +3936,7 @@ function wp_ajax_parse_media_shortcode() {
 	$styles = wpview_media_sandbox_styles();
 
 	foreach ( $styles as $style ) {
-		$head .= wp_get_stylesheet_link_tag(
+		$head .= wp_get_style_link_tag(
 			array(
 				'rel'  => 'stylesheet',
 				'href' => $style,

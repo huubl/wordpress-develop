@@ -1,17 +1,17 @@
 <?php
 
 /**
- * Test wp_get_stylesheet_link_tag() and wp_print_stylesheet_link_tag().
+ * Test wp_get_style_link_tag() and wp_print_style_link_tag().
  *
  * @group dependencies
  * @group styles
  */
-class Tests_Dependencies_wpStylesheetLinkTag extends WP_UnitTestCase {
+class Tests_Dependencies_wpStyleLinkTag extends WP_UnitTestCase {
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_escapes_uri_and_supports_boolean_attributes() {
+	public function test_get_style_link_tag_escapes_uri_and_supports_boolean_attributes() {
 		$expected = <<<'HTML'
 <link
 	rel="stylesheet"
@@ -24,7 +24,7 @@ HTML;
 
 		$this->assertEqualHTML(
 			$expected,
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel'         => 'stylesheet',
 					'href'        => 'https://example.com/style.css?one=1&two=2',
@@ -36,9 +36,9 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_attribute_value_types() {
+	public function test_get_style_link_tag_attribute_value_types() {
 		$expected = <<<'HTML'
 <link
 	enabled
@@ -51,7 +51,7 @@ HTML;
 
 		$this->assertEqualHTML(
 			$expected,
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'enabled'     => true,
 					'disabled'    => false,
@@ -66,12 +66,12 @@ HTML;
 	/**
 	 * Case-insensitive duplicate attributes should keep the first value.
 	 *
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_ignores_duplicate_attributes() {
+	public function test_get_style_link_tag_ignores_duplicate_attributes() {
 		$this->assertEqualHTML(
 			"<link test=\"first\" />\n",
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'test'     => 'first',
 					'TEST'     => 'second',
@@ -83,9 +83,9 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_applies_wp_style_attributes_filter() {
+	public function test_get_style_link_tag_applies_wp_style_attributes_filter() {
 		$filter = static function ( $attributes ) {
 			$attributes['nonce'] = 'filtered-nonce';
 			return $attributes;
@@ -93,7 +93,7 @@ HTML;
 
 		add_filter( 'wp_style_attributes', $filter );
 
-		$tag = wp_get_stylesheet_link_tag( array( 'rel' => 'stylesheet' ) );
+		$tag = wp_get_style_link_tag( array( 'rel' => 'stylesheet' ) );
 
 		remove_filter( 'wp_style_attributes', $filter );
 
@@ -104,12 +104,12 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_prints_attributes_in_the_order_given() {
+	public function test_get_style_link_tag_prints_attributes_in_the_order_given() {
 		$this->assertSame(
 			"<link rel=\"preload\" as=\"style\" id=\"test-css\" href=\"https://example.com/style.css?one=1&#038;two=2\" media=\"print\" crossorigin />\n",
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel'         => 'preload',
 					'as'          => 'style',
@@ -123,14 +123,14 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 *
 	 * @expectedIncorrectUsage WP_HTML_Tag_Processor::set_attribute
 	 */
-	public function test_get_stylesheet_link_tag_rejects_invalid_attribute_names() {
+	public function test_get_style_link_tag_rejects_invalid_attribute_names() {
 		$this->assertSame(
 			"<link rel=\"stylesheet\" />\n",
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel'                => 'stylesheet',
 					'onload="alert(1)"'  => true,
@@ -143,12 +143,12 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_keeps_the_order_of_unusual_attribute_names() {
+	public function test_get_style_link_tag_keeps_the_order_of_unusual_attribute_names() {
 		$this->assertSame(
 			"<link rel=\"stylesheet\" @load=\"ready\" x-bind:media=\"query\" href=\"https://example.com/style.css\" />\n",
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel'          => 'stylesheet',
 					'@load'        => 'ready',
@@ -160,10 +160,10 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
-	public function test_get_stylesheet_link_tag_rejects_disallowed_href_protocols() {
-		$tag       = wp_get_stylesheet_link_tag(
+	public function test_get_style_link_tag_rejects_disallowed_href_protocols() {
+		$tag       = wp_get_style_link_tag(
 			array(
 				'rel'  => 'stylesheet',
 				'href' => 'javascript:alert(1)',
@@ -210,7 +210,7 @@ HTML;
 	/**
 	 * The `id` attribute may be used to locate the tag, as the user profile screen does for `colors-css`.
 	 *
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 *
 	 * @dataProvider data_style_attributes_filter_changing_id
 	 *
@@ -218,13 +218,13 @@ HTML;
 	 * @param string  $expected Expected markup.
 	 */
 	public function test_style_attributes_filter_cannot_change_id( Closure $filter, string $expected ) {
-		$this->setExpectedIncorrectUsage( 'wp_get_stylesheet_link_tag' );
+		$this->setExpectedIncorrectUsage( 'wp_get_style_link_tag' );
 
 		add_filter( 'wp_style_attributes', $filter );
 
 		$this->assertSame(
 			$expected,
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel'  => 'stylesheet',
 					'id'   => 'test-css',
@@ -235,7 +235,7 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
 	public function test_style_attributes_filter_can_add_id() {
 		add_filter(
@@ -248,14 +248,14 @@ HTML;
 
 		$this->assertSame(
 			"<link rel=\"stylesheet\" id=\"added-css\" />\n",
-			wp_get_stylesheet_link_tag( array( 'rel' => 'stylesheet' ) )
+			wp_get_style_link_tag( array( 'rel' => 'stylesheet' ) )
 		);
 	}
 
 	/**
 	 * A lexical variation of the `id` name added alongside the supplied ID is dropped without a notice.
 	 *
-	 * @covers ::wp_get_stylesheet_link_tag
+	 * @covers ::wp_get_style_link_tag
 	 */
 	public function test_style_attributes_filter_cannot_override_id_with_lexical_variation() {
 		add_filter(
@@ -268,7 +268,7 @@ HTML;
 
 		$this->assertSame(
 			"<link rel=\"stylesheet\" id=\"test-css\" />\n",
-			wp_get_stylesheet_link_tag(
+			wp_get_style_link_tag(
 				array(
 					'rel' => 'stylesheet',
 					'id'  => 'test-css',
@@ -278,17 +278,17 @@ HTML;
 	}
 
 	/**
-	 * @covers ::wp_print_stylesheet_link_tag
+	 * @covers ::wp_print_style_link_tag
 	 */
-	public function test_print_stylesheet_link_tag_prints_get_stylesheet_link_tag() {
+	public function test_print_style_link_tag_prints_get_style_link_tag() {
 		$attributes = array(
 			'rel'  => 'stylesheet',
 			'href' => 'https://example.com/style.css',
 		);
 
 		$this->assertSame(
-			wp_get_stylesheet_link_tag( $attributes ),
-			get_echo( 'wp_print_stylesheet_link_tag', array( $attributes ) )
+			wp_get_style_link_tag( $attributes ),
+			get_echo( 'wp_print_style_link_tag', array( $attributes ) )
 		);
 	}
 }

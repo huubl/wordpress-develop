@@ -228,10 +228,10 @@ HTML;
 		$legacy_filter = new MockAction();
 		add_filter( 'wp_admin_css', array( $legacy_filter, 'filter' ), 10, 2 );
 
-		$markup = get_echo( 'wp_admin_css', array( 'stylesheet-link-api-test' ) );
+		$markup = get_echo( 'wp_admin_css', array( 'style-link-api-test' ) );
 
 		$this->assertSame(
-			array( array( $markup, 'stylesheet-link-api-test' ) ),
+			array( array( $markup, 'style-link-api-test' ) ),
 			$legacy_filter->get_args(),
 			'The wp_admin_css filter should be passed the tag with the filtered attributes.'
 		);
@@ -239,7 +239,7 @@ HTML;
 		$processor = new WP_HTML_Tag_Processor( $markup );
 		$this->assertTrue( $processor->next_tag( 'link' ) );
 		$this->assertSame( 'admin-style', $processor->get_attribute( 'nonce' ) );
-		$this->assertStringContainsString( 'stylesheet-link-api-test.css', $processor->get_attribute( 'href' ) );
+		$this->assertStringContainsString( 'style-link-api-test.css', $processor->get_attribute( 'href' ) );
 	}
 
 	/**
@@ -325,7 +325,7 @@ HTML;
 	 * @covers WP_Styles::do_item
 	 */
 	public function test_style_attributes_filter_cannot_change_enqueued_style_id() {
-		$this->setExpectedIncorrectUsage( 'wp_get_stylesheet_link_tag' );
+		$this->setExpectedIncorrectUsage( 'wp_get_style_link_tag' );
 
 		$filter = static function ( $attributes ) {
 			$attributes['id'] = 'changed';
@@ -412,8 +412,8 @@ HTML;
 	 */
 	public function test_wp_admin_css_markup_is_unchanged() {
 		$this->assertSame(
-			"<link rel='stylesheet' href='" . esc_url( wp_admin_css_uri( 'stylesheet-link-api-test' ) ) . "' />\n",
-			get_echo( 'wp_admin_css', array( 'stylesheet-link-api-test' ) )
+			"<link rel='stylesheet' href='" . esc_url( wp_admin_css_uri( 'style-link-api-test' ) ) . "' />\n",
+			get_echo( 'wp_admin_css', array( 'style-link-api-test' ) )
 		);
 	}
 

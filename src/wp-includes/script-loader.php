@@ -2430,7 +2430,7 @@ function _print_styles() {
 		}
 
 		$href = $wp_styles->base_url . "/wp-admin/load-styles.php?dir={$dir}" . $concatenated . '&ver=' . $ver;
-		echo _wp_get_legacy_stylesheet_link_tag(
+		echo _wp_get_legacy_style_link_tag(
 			array(
 				'rel'   => 'stylesheet',
 				'href'  => $href,
@@ -3668,8 +3668,8 @@ function wp_print_inline_script_tag( $data, $attributes = array() ) {
  * @phpstan-param array<non-empty-string, string|bool> $attributes
  * @phpstan-return non-falsy-string
  */
-function wp_get_stylesheet_link_tag( array $attributes ): string {
-	return _wp_build_stylesheet_link_tag( _wp_filter_stylesheet_link_attributes( $attributes ) );
+function wp_get_style_link_tag( array $attributes ): string {
+	return _wp_build_style_link_tag( _wp_filter_style_link_attributes( $attributes ) );
 }
 
 /**
@@ -3685,12 +3685,12 @@ function wp_get_stylesheet_link_tag( array $attributes ): string {
  *
  * @phpstan-param array<non-empty-string, string|bool> $attributes
  */
-function wp_print_stylesheet_link_tag( array $attributes ): void {
-	echo wp_get_stylesheet_link_tag( $attributes );
+function wp_print_style_link_tag( array $attributes ): void {
+	echo wp_get_style_link_tag( $attributes );
 }
 
 /**
- * Formats a stylesheet link tag in the markup Core printed before wp_get_stylesheet_link_tag().
+ * Formats a stylesheet link tag in the markup Core printed before wp_get_style_link_tag().
  *
  * Callbacks for filters such as {@see 'style_loader_tag'} and {@see 'wp_admin_css'} have long
  * edited that markup as a string, so its attribute values remain single-quoted.
@@ -3708,16 +3708,16 @@ function wp_print_stylesheet_link_tag( array $attributes ): void {
  * @phpstan-param array<non-empty-string, string|bool> $attributes
  * @phpstan-return non-falsy-string
  */
-function _wp_get_legacy_stylesheet_link_tag( array $attributes, ?string $escaped_href = null ): string {
+function _wp_get_legacy_style_link_tag( array $attributes, ?string $escaped_href = null ): string {
 	$href       = $attributes['href'] ?? null;
-	$attributes = _wp_filter_stylesheet_link_attributes( $attributes );
+	$attributes = _wp_filter_style_link_attributes( $attributes );
 
 	if ( '' === $escaped_href || ! isset( $attributes['href'] ) || $attributes['href'] !== $href ) {
 		$escaped_href = null;
 	}
 
 	// Attribute values are escaped, so the only double quotes in the tag are those delimiting them.
-	return str_replace( '"', "'", _wp_build_stylesheet_link_tag( $attributes, $escaped_href ) );
+	return str_replace( '"', "'", _wp_build_style_link_tag( $attributes, $escaped_href ) );
 }
 
 /**
@@ -3731,7 +3731,7 @@ function _wp_get_legacy_stylesheet_link_tag( array $attributes, ?string $escaped
  *
  * @phpstan-param array<non-empty-string, string|bool> $attributes
  */
-function _wp_filter_stylesheet_link_attributes( array $attributes ) {
+function _wp_filter_style_link_attributes( array $attributes ) {
 	/**
 	 * Filters attributes to be added to a stylesheet link tag.
 	 *
@@ -3763,7 +3763,7 @@ function _wp_filter_stylesheet_link_attributes( array $attributes ) {
 
 	if ( ( $filtered_attributes['id'] ?? null ) !== $attributes['id'] ) {
 		_doing_it_wrong(
-			'wp_get_stylesheet_link_tag',
+			'wp_get_style_link_tag',
 			sprintf(
 				/* translators: 1: id, 2: wp_style_attributes */
 				__( 'The %1$s attribute cannot be changed by the %2$s filter.' ),
@@ -3801,7 +3801,7 @@ function _wp_filter_stylesheet_link_attributes( array $attributes ) {
  *
  * @phpstan-return non-falsy-string
  */
-function _wp_build_stylesheet_link_tag( $attributes, ?string $escaped_href = null ): string {
+function _wp_build_style_link_tag( $attributes, ?string $escaped_href = null ): string {
 	$html    = '<link';
 	$updates = array();
 	$seen    = array();

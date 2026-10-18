@@ -733,7 +733,7 @@ function locale_stylesheet() {
 		return;
 	}
 
-	wp_print_stylesheet_link_tag(
+	wp_print_style_link_tag(
 		array(
 			'rel'   => 'stylesheet',
 			'href'  => $stylesheet,
