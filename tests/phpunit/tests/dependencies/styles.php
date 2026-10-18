@@ -478,7 +478,7 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		$markup = get_echo( '_print_styles' );
 
 		$this->assertMatchesRegularExpression(
-			"#^<link rel='stylesheet' href='[^']*/wp-admin/load-styles\\.php\\?c=[01]&amp;dir=ltr&amp;load%5Bchunk_0%5D=concat-one,concat-two&amp;ver=[^']*' media='all' />\n$#",
+			"#^<link rel='stylesheet' href='[^']*/wp-admin/load-styles\\.php\\?dir=ltr&amp;load%5Bchunk_0%5D=concat-one,concat-two&amp;ver=[^']*' media='all' />\n$#",
 			$markup
 		);
 	}
@@ -1324,6 +1324,9 @@ HTML;
 
 	/**
 	 * @ticket 63887
+	 *
+	 * @global WP_Styles $wp_styles
+	 * @global string    $wp_version
 	 */
 	public function test_source_url_with_concat() {
 		global $wp_styles, $wp_version;
@@ -1343,7 +1346,7 @@ HTML;
 		$expected = <<<HTML
 <link
 	rel="stylesheet"
-	href="/wp-admin/load-styles.php?c=0&dir=ltr&load%5Bchunk_0%5D=one,two&ver={$wp_version}"
+	href="/wp-admin/load-styles.php?dir=ltr&load%5Bchunk_0%5D=one,two&ver={$wp_version}"
 	media="all"
 >
 <style>
