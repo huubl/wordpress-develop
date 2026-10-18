@@ -3658,7 +3658,7 @@ function wp_print_inline_script_tag( $data, $attributes = array() ) {
  *
  * Attributes are printed in the order they are given, so `rel` can be printed first, as is conventional.
  *
- * @since 7.2.0
+ * @since 7.3.0
  *
  * @param array<string, string|bool> $attributes Key-value pairs representing `<link>` tag attributes. Only the
  *                                               attribute name is added for entries whose value is `true`, and
@@ -3677,7 +3677,7 @@ function wp_get_stylesheet_link_tag( array $attributes ): string {
  *
  * It is possible to inject attributes in the stylesheet link tag via the {@see 'wp_style_attributes'} filter.
  *
- * @since 7.2.0
+ * @since 7.3.0
  *
  * @param array<string, string|bool> $attributes Key-value pairs representing `<link>` tag attributes. Only the
  *                                               attribute name is added for entries whose value is `true`, and
@@ -3695,7 +3695,7 @@ function wp_print_stylesheet_link_tag( array $attributes ): void {
  * Callbacks for filters such as {@see 'style_loader_tag'} and {@see 'wp_admin_css'} have long
  * edited that markup as a string, so its attribute values remain single-quoted.
  *
- * @since 7.2.0
+ * @since 7.3.0
  * @access private
  *
  * @param array<string, string|bool> $attributes   Key-value pairs representing `<link>` tag attributes.
@@ -3723,7 +3723,7 @@ function _wp_get_legacy_stylesheet_link_tag( array $attributes, ?string $escaped
 /**
  * Applies the {@see 'wp_style_attributes'} filter to the attributes of a stylesheet link tag.
  *
- * @since 7.2.0
+ * @since 7.3.0
  * @access private
  *
  * @param array<string, string|bool> $attributes Key-value pairs representing `<link>` tag attributes.
@@ -3741,11 +3741,15 @@ function _wp_filter_stylesheet_link_attributes( array $attributes ) {
 	 * {@see 'style_loader_tag'} filter is the one from before this filter, even when this
 	 * filter changes the `href` attribute.
 	 *
+	 * Attribute values are not yet escaped. The `href` attribute is escaped with esc_url() when the
+	 * tag is printed, which applies the {@see 'clean_url'} filter and omits a URL with a disallowed
+	 * protocol, so the printed URL may differ from the one passed to this filter.
+	 *
 	 * The `id` attribute, when supplied, cannot be changed or removed by this filter, since other
 	 * code may locate the `<link>` tag by it. For example, the user profile screen locates the
 	 * `colors-css` stylesheet to preview a color scheme.
 	 *
-	 * @since 7.2.0
+	 * @since 7.3.0
 	 *
 	 * @param array<string, string|bool> $attributes Key-value pairs representing `<link>` tag attributes.
 	 *                                               Only the attribute name is added to the `<link>` tag for
@@ -3766,7 +3770,7 @@ function _wp_filter_stylesheet_link_attributes( array $attributes ) {
 				'<code>id</code>',
 				'<code>wp_style_attributes</code>'
 			),
-			'7.2.0'
+			'7.3.0'
 		);
 	}
 
@@ -3787,7 +3791,7 @@ function _wp_filter_stylesheet_link_attributes( array $attributes ) {
 /**
  * Builds a `<link>` tag from attributes which have already been filtered.
  *
- * @since 7.2.0
+ * @since 7.3.0
  * @access private
  *
  * @param array<string, string|bool> $attributes   Key-value pairs representing `<link>` tag attributes.
