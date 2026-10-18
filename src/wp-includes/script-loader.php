@@ -3735,7 +3735,7 @@ function _wp_filter_style_link_attributes( array $attributes ) {
 	/**
 	 * Filters attributes to be added to a stylesheet link tag.
 	 *
-	 * This applies to every stylesheet link Core prints, including those for enqueued styles,
+	 * This applies to the stylesheet links printed by Core, including those for enqueued styles,
 	 * whose `id` attribute is the style's handle with `-css` appended, or `-rtl-css` for a
 	 * right-to-left stylesheet. For an enqueued style the URL passed to the
 	 * {@see 'style_loader_tag'} filter is the one from before this filter, even when this
