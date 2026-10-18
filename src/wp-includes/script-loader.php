@@ -3798,16 +3798,17 @@ function _wp_build_stylesheet_link_tag( $attributes, $escaped_href = null ) {
 		}
 
 		if ( 'href' === $normalized_name && null !== $escaped_href ) {
-			$html .= " {$name}=\"{$escaped_href}\"";
+			// Escaping functions are filterable, so a double quote must not end the value early.
+			$html .= " {$name}=\"" . str_replace( '"', '&quot;', $escaped_href ) . '"';
 			continue;
 		}
 
 		/*
 		 * The Tag Processor adds new attributes in alphabetical order, so each attribute is
-		 * put in the tag first, to keep its place, and then given its value. An attribute
-		 * whose name isn't plainly valid is left for the Tag Processor to add, or reject.
+		 * put in the tag first, to keep its place, and then given its value. A name with
+		 * syntax-like or control characters is left for the Tag Processor to reject.
 		 */
-		if ( 1 === preg_match( '/^[a-z][a-z0-9_.:-]*$/i', $name ) ) {
+		if ( '' !== $name && ! preg_match( '/[\x00-\x20"\'&<>\/=]/', $name ) ) {
 			$html .= " {$name}";
 		}
 

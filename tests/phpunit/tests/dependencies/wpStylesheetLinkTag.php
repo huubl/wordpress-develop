@@ -135,6 +135,25 @@ HTML;
 					'rel'                => 'stylesheet',
 					'onload="alert(1)"'  => true,
 					'x><script>alert(1)' => 'y',
+					"crossorigin\n"      => true,
+					"onload\n"           => 'alert(1)',
+				)
+			)
+		);
+	}
+
+	/**
+	 * @covers ::wp_get_stylesheet_link_tag
+	 */
+	public function test_get_stylesheet_link_tag_keeps_the_order_of_unusual_attribute_names() {
+		$this->assertSame(
+			"<link rel=\"stylesheet\" @load=\"ready\" x-bind:media=\"query\" href=\"https://example.com/style.css\" />\n",
+			wp_get_stylesheet_link_tag(
+				array(
+					'rel'          => 'stylesheet',
+					'@load'        => 'ready',
+					'x-bind:media' => 'query',
+					'href'         => 'https://example.com/style.css',
 				)
 			)
 		);

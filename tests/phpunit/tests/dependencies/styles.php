@@ -414,6 +414,29 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A double quote from a filtered escaping function must not end the `href` attribute's value.
+	 *
+	 * @covers WP_Styles::do_item
+	 */
+	public function test_double_quote_from_clean_url_filter_stays_in_href() {
+		$filter = static function ( $url ) {
+			return $url . '"onload="alert(1)';
+		};
+
+		add_filter( 'clean_url', $filter );
+
+		wp_enqueue_style( 'quoted-url', 'https://example.com/style.css', array(), null );
+		$markup = get_echo( 'wp_print_styles' );
+
+		remove_filter( 'clean_url', $filter );
+
+		$this->assertSame(
+			"<link rel='stylesheet' id='quoted-url-css' href='https://example.com/style.css&quot;onload=&quot;alert(1)' media='all' />\n",
+			$markup
+		);
+	}
+
+	/**
 	 * @covers ::_print_styles
 	 */
 	public function test_concatenated_styles_markup_is_unchanged() {
